@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 
 try:
     from langfuse.decorators import observe, langfuse_context
