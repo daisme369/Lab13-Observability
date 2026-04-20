@@ -42,11 +42,35 @@ async def metrics() -> dict:
     return snapshot()
 
 
+# @app.post("/chat", response_model=ChatResponse)
+# async def chat(request: Request, body: ChatRequest) -> ChatResponse:
+#     bind_contextvars(
+#         user_id_hash=hash_user_id(body.user_id),
+#         session_id=body.session_id,
+#         feature=body.feature,
+#         model="mock-llm",
+#         env=os.getenv("APP_ENV", "dev"),
+#     )
+
+#     log.info(
+#         "request_received",
+#         service="api",
+#         payload={"message_preview": summarize_text(body.message)},
+#     )
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: Request, body: ChatRequest) -> ChatResponse:
     # TODO: Enrich logs with request context (user_id_hash, session_id, feature, model, env)
     # bind_contextvars(...)
-    
+    bind_contextvars(
+        user_id_hash=hash_user_id(body.user_id),
+        session_id=body.session_id,
+        feature=body.feature,
+        model="mock-llm",
+        env=os.getenv("APP_ENV", "dev"),
+    )
+
     log.info(
         "request_received",
         service="api",
@@ -84,7 +108,10 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             "request_failed",
             service="api",
             error_type=error_type,
-            payload={"detail": str(exc), "message_preview": summarize_text(body.message)},
+            payload={
+                "detail": str(exc),
+                "message_preview": summarize_text(body.message),
+            },
         )
         raise HTTPException(status_code=500, detail=error_type) from exc
 
