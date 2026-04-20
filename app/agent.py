@@ -40,8 +40,10 @@ class LabAgent:
             session_id=session_id,
             tags=["lab", feature, self.model],
         )
-        langfuse_context.update_current_observation(
-            metadata={"doc_count": len(docs), "query_preview": summarize_text(message)},
+        langfuse_context.update_current_span(
+            metadata={"doc_count": str(len(docs)), "query_preview": summarize_text(message, max_len=200)},
+        )
+        langfuse_context.update_current_generation(
             usage_details={"input": response.usage.input_tokens, "output": response.usage.output_tokens},
         )
 

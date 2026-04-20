@@ -2,9 +2,21 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 
 try:
-    from langfuse.decorators import observe, langfuse_context
+    from langfuse import Langfuse, observe
+
+    # Initialize Langfuse client with credentials
+    _langfuse_client = Langfuse(
+        public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+        secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+        host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
+    )
+
+    # Get langfuse_context from the client for updating traces/observations
+    langfuse_context = _langfuse_client
 except Exception:  # pragma: no cover
     def observe(*args: Any, **kwargs: Any):
         def decorator(func):
