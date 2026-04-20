@@ -1,19 +1,63 @@
 alerts:
   - name: high_latency_p95
     severity: P2
-    condition: latency_p95_ms > 5000 for 30m
+    condition: latency_p95_ms > 3000 for 10m
     type: symptom-based
     owner: team-oncall
     runbook: docs/alerts.md#1-high-latency-p95
+
+  - name: high_latency_p99
+    severity: P2
+    condition: latency_p99_ms > 5000 for 10m
+    type: symptom-based
+    owner: team-oncall
+    runbook: docs/alerts.md#4-high-latency-p99
+
+  - name: high_ttft_p95
+    severity: P2
+    condition: ttft_p95_ms > 1200 for 10m
+    type: symptom-based
+    owner: team-oncall
+    runbook: docs/alerts.md#5-high-ttft-p95
+
   - name: high_error_rate
     severity: P1
-    condition: error_rate_pct > 5 for 5m
+    condition: error_rate_pct > 2 for 5m
     type: symptom-based
     owner: team-oncall
     runbook: docs/alerts.md#2-high-error-rate
+
+  - name: high_timeout_rate
+    severity: P1
+    condition: timeout_rate_pct > 0.5 for 10m
+    type: symptom-based
+    owner: team-oncall
+    runbook: docs/alerts.md#6-high-timeout-rate
+
   - name: cost_budget_spike
     severity: P2
-    condition: hourly_cost_usd > 2x_baseline for 15m
+    condition: daily_cost_usd > 2.5 for 60m
     type: symptom-based
     owner: finops-owner
     runbook: docs/alerts.md#3-cost-budget-spike
+
+  - name: pii_leak_detected
+    severity: P1
+    condition: pii_leak_rate > 0 for 1m
+    type: compliance-based
+    owner: security-oncall
+    runbook: docs/alerts.md#7-pii-leak-detected
+
+  - name: low_correlation_coverage
+    severity: P2
+    condition: correlation_coverage_pct < 99.9 for 15m
+    type: quality-of-observability
+    owner: observability-owner
+    runbook: docs/alerts.md#8-low-correlation-coverage
+    
+  - name: low_structured_log_compliance
+    severity: P2
+    condition: structured_log_compliance_pct < 99.5 for 15m
+    type: quality-of-observability
+    owner: observability-owner
+    runbook: docs/alerts.md#9-low-structured-log-compliance
