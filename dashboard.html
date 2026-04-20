@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Agent Observability Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #08111f;
+      --bg-alt: #0e1728;
+      --panel: rgba(13, 22, 38, 0.92);
+      --panel-border: rgba(148, 163, 184, 0.16);
+      --text: #e5eefc;
+      --muted: #8ea2c7;
+      --accent: #4fd1c5;
+      --blue: #60a5fa;
+      --indigo: #818cf8;
+      --amber: #f59e0b;
+      --red: #fb7185;
+      --green: #34d399;
+      --violet: #a78bfa;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      --radius: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(79, 209, 197, 0.16), transparent 32%),
+        radial-gradient(circle at top right, rgba(96, 165, 250, 0.14), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(167, 139, 250, 0.10), transparent 26%),
+        linear-gradient(180deg, #050b14 0%, #08111f 48%, #07101c 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0.05));
+      opacity: 0.35;
+    }
+
+    .app-shell {
+      width: min(1540px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 28px;
+    }
+
+    .hero {
+      position: relative;
+      padding: 26px 26px 20px;
+      border: 1px solid var(--panel-border);
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(14, 23, 40, 0.95), rgba(10, 17, 31, 0.9));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      isolation: isolate;
+      animation: fadeUp 700ms ease-out both;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -12% -48% auto;
+      width: 440px;
+      height: 440px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(79, 209, 197, 0.18), transparent 62%);
+      filter: blur(8px);
+      z-index: -1;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 50px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .title-wrap p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 760px;
+      line-height: 1.6;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(79, 209, 197, 0.22);
+      background: rgba(79, 209, 197, 0.08);
+      color: #befaf2;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+      animation: pulse 2s infinite;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .refresh-group {
+      display: inline-flex;
+      gap: 8px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .refresh-btn {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .refresh-btn:hover {
+      transform: translateY(-1px);
+      color: #ffffff;
+    }
+
+    .refresh-btn.active {
+      background: linear-gradient(135deg, rgba(79, 209, 197, 0.22), rgba(96, 165, 250, 0.22));
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(79, 209, 197, 0.22);
+    }
+
+    .refresh-btn.primary {
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.22), rgba(79, 209, 197, 0.18));
+      color: #ffffff;
+    }
+
+    .control-chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 13px;
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .card {
+      position: relative;
+      border-radius: var(--radius);
+      border: 1px solid var(--panel-border);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(10, 18, 32, 0.92));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .metric-card {
+      padding: 18px 18px 16px;
+      min-height: 138px;
+      animation: fadeUp 700ms ease-out both;
+    }
+
+    .metric-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent 35%);
+      pointer-events: none;
+    }
+
+    .metric-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 750;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      margin: 0;
+    }
+
+    .metric-subtext {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .metric-accent {
+      position: absolute;
+      inset: auto 16px 16px auto;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.26), rgba(255,255,255,0.04));
+      filter: blur(0.2px);
+      opacity: 0.9;
+    }
+
+    .metric-accent.blue { background: radial-gradient(circle at 30% 30%, rgba(96,165,250,0.36), rgba(96,165,250,0.06)); }
+    .metric-accent.green { background: radial-gradient(circle at 30% 30%, rgba(52,211,153,0.34), rgba(52,211,153,0.08)); }
+    .metric-accent.red { background: radial-gradient(circle at 30% 30%, rgba(251,113,133,0.34), rgba(251,113,133,0.08)); }
+    .metric-accent.amber { background: radial-gradient(circle at 30% 30%, rgba(245,158,11,0.36), rgba(245,158,11,0.08)); }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      padding: 18px;
+      min-height: 360px;
+      animation: fadeUp 760ms ease-out both;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .panel .panel-subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      color: #dbe7fb;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .grid-span-6 { grid-column: span 6; }
+    .grid-span-4 { grid-column: span 4; }
+    .grid-span-8 { grid-column: span 8; }
+    .grid-span-12 { grid-column: span 12; }
+
+    .chart-wrap {
+      position: relative;
+      height: 270px;
+    }
+
+    .chart-wrap.tall { height: 304px; }
+
+    .table-panel {
+      padding: 18px;
+      margin-top: 18px;
+      animation: fadeUp 820ms ease-out both;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(8, 14, 24, 0.55);
+      min-width: 780px;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9fb0cf;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    tbody td {
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #dce7f8;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+      vertical-align: top;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .status.ok {
+      background: rgba(52, 211, 153, 0.12);
+      color: #86efac;
+      border: 1px solid rgba(52, 211, 153, 0.2);
+    }
+
+    .status.warn {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .status.err {
+      background: rgba(251, 113, 133, 0.12);
+      color: #fda4af;
+      border: 1px solid rgba(251, 113, 133, 0.2);
+    }
+
+    .footer {
+      margin: 18px 0 0;
+      padding: 18px 10px 6px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    canvas {
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
+      70% { box-shadow: 0 0 0 14px rgba(52, 211, 153, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    }
+
+    .fade-in {
+      animation: fadeUp 700ms ease-out both;
+    }
+
+    @media (max-width: 1200px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-span-6,
+      .grid-span-4,
+      .grid-span-8,
+      .grid-span-12 {
+        grid-column: span 12;
+      }
+
+      .main-grid {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell {
+        width: min(100% - 18px, 100%);
+        padding-top: 10px;
+      }
+
+      .hero,
+      .panel,
+      .table-panel {
+        padding: 16px;
+        border-radius: 20px;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-wrap {
+        height: 240px;
+      }
+
+      .chart-wrap.tall {
+        height: 270px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero-top">
+        <div class="title-wrap">
+          <div class="status-pill"><span class="status-dot"></span> Live monitoring view • mock data loaded</div>
+          <h1>AI Agent Observability Dashboard</h1>
+          <p>
+            FastAPI AI Agent monitoring for latency, traffic, errors, cost, token usage, and quality signals.
+            This single-file dashboard is demo-ready and designed to mirror a production observability console.
+          </p>
+        </div>
+        <div class="badge">Refresh mode: <strong id="refreshMode" style="color:#ffffff; font-weight:700;">Mock data</strong></div>
+      </div>
+      <div class="controls">
+        <div class="control-chip">Environment: <strong style="color:#fff; font-weight:700;">Local Demo</strong></div>
+        <div class="control-chip">Service: <strong style="color:#fff; font-weight:700;">FastAPI AI Agent</strong></div>
+        <div class="control-chip">Time range: <strong style="color:#fff; font-weight:700;">Last 24 hours</strong></div>
+        <div class="control-chip">Status: <strong id="statusText" style="color:#86efac; font-weight:700;">Healthy</strong></div>
+        <div class="refresh-group" role="group" aria-label="Refresh mode controls">
+          <button class="refresh-btn active" id="autoModeBtn" type="button">Auto Get 15s</button>
+          <button class="refresh-btn" id="manualModeBtn" type="button">Manual Get</button>
+          <button class="refresh-btn primary" id="getNowBtn" type="button">Get now</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="summary-grid" aria-label="Top summary metrics">
+      <article class="card metric-card">
+        <div class="metric-label">Total Traffic <span style="color:#60a5fa;">●</span></div>
+        <div class="metric-value" id="totalTrafficValue">0</div>
+        <div class="metric-subtext">Requests processed across the selected time window.</div>
+        <div class="metric-accent blue"></div>
+      </article>
+      <article class="card metric-card">
+        <div class="metric-label">Avg Latency <span style="color:#4fd1c5;">●</span></div>
+        <div class="metric-value" id="avgLatencyValue">0 ms</div>
+        <div class="metric-subtext">Mean end-to-end response time from the agent pipeline.</div>
+        <div class="metric-accent"></div>
+      </article>
+      <article class="card metric-card">
+        <div class="metric-label">Error Rate <span style="color:#fb7185;">●</span></div>
+        <div class="metric-value" id="errorRateValue">0%</div>
+        <div class="metric-subtext">Share of failed requests across runtime, timeout, and validation issues.</div>
+        <div class="metric-accent red"></div>
+      </article>
+      <article class="card metric-card">
+        <div class="metric-label">Total Cost <span style="color:#f59e0b;">●</span></div>
+        <div class="metric-value" id="totalCostValue">$0.00</div>
+        <div class="metric-subtext">Model and retrieval spend estimated for the time window.</div>
+        <div class="metric-accent amber"></div>
+      </article>
+    </section>
+
+    <section class="main-grid" aria-label="Monitoring charts">
+      <article class="card panel grid-span-6">
+        <div class="panel-header">
+          <div>
+            <h2>Latency Metrics</h2>
+            <div class="panel-subtitle">P50, P95, and P99 latency trend across recent intervals.</div>
+          </div>
+          <div class="badge">ms</div>
+        </div>
+        <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
+      </article>
+
+      <article class="card panel grid-span-6">
+        <div class="panel-header">
+          <div>
+            <h2>Traffic Over Time</h2>
+            <div class="panel-subtitle">Request volume by hour, matching agent load patterns.</div>
+          </div>
+          <div class="badge">req / hr</div>
+        </div>
+        <div class="chart-wrap"><canvas id="trafficChart"></canvas></div>
+      </article>
+
+      <article class="card panel grid-span-4">
+        <div class="panel-header">
+          <div>
+            <h2>Error Breakdown</h2>
+            <div class="panel-subtitle">Failure mix across the most common incident types.</div>
+          </div>
+          <div class="badge">share</div>
+        </div>
+        <div class="chart-wrap"><canvas id="errorChart"></canvas></div>
+      </article>
+
+      <article class="card panel grid-span-4">
+        <div class="panel-header">
+          <div>
+            <h2>Cost Over Time</h2>
+            <div class="panel-subtitle">Spend trend with USD labels for demo-ready monitoring.</div>
+          </div>
+          <div class="badge">USD</div>
+        </div>
+        <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+      </article>
+
+      <article class="card panel grid-span-4">
+        <div class="panel-header">
+          <div>
+            <h2>Token Usage</h2>
+            <div class="panel-subtitle">Input and output token usage per interval.</div>
+          </div>
+          <div class="badge">tokens</div>
+        </div>
+        <div class="chart-wrap"><canvas id="tokenChart"></canvas></div>
+      </article>
+
+      <article class="card panel grid-span-12">
+        <div class="panel-header">
+          <div>
+            <h2>Quality Score</h2>
+            <div class="panel-subtitle">Average response quality score represented as a gauge-style chart.</div>
+          </div>
+          <div class="badge"><span id="qualityValueInline">0%</span></div>
+        </div>
+        <div class="chart-wrap tall"><canvas id="qualityChart"></canvas></div>
+      </article>
+    </section>
+
+    <section class="card table-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Recent Incidents</h2>
+          <div class="panel-subtitle">Latest alert-worthy scenarios captured from the observability workflow.</div>
+        </div>
+        <div class="badge">updated live</div>
+      </div>
+      <div class="table-container">
+        <table aria-label="Recent incidents table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Scenario</th>
+              <th>Status</th>
+              <th>Root Cause</th>
+            </tr>
+          </thead>
+          <tbody id="incidentsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">Built for Day13 Observability Lab</footer>
+  </div>
+
+  <script>
+    const API_URL = 'http://127.0.0.1:8000/metrics';
+    const HISTORY_LIMIT = 8;
+
+    const dashboardState = {
+      labels: [],
+      latencyP50: [],
+      latencyP95: [],
+      latencyP99: [],
+      traffic: [],
+      cost: [],
+      tokensIn: [],
+      tokensOut: [],
+      quality: []
+    };
+
+    const chartTheme = {
+      gridColor: 'rgba(148, 163, 184, 0.12)',
+      tickColor: '#9fb0cf',
+      fontColor: '#bfd0ea'
+    };
+
+    let latencyChart;
+    let trafficChart;
+    let errorChart;
+    let costChart;
+    let tokenChart;
+    let qualityChart;
+    let refreshTimerId = null;
+    let refreshMode = 'auto';
+
+    Chart.defaults.color = chartTheme.fontColor;
+    Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    Chart.defaults.borderColor = chartTheme.gridColor;
+    Chart.defaults.animation.duration = 900;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+
+    const centerTextPlugin = {
+      id: 'centerTextPlugin',
+      afterDraw(chart, args, pluginOptions) {
+        if (!pluginOptions || !pluginOptions.text) return;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const x = (chartArea.left + chartArea.right) / 2;
+        const y = (chartArea.top + chartArea.bottom) / 2;
+        ctx.save();
+        ctx.fillStyle = pluginOptions.color || '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `700 ${pluginOptions.size || 34}px Inter, sans-serif`;
+        ctx.fillText(pluginOptions.text, x, y - 6);
+        ctx.font = `500 ${pluginOptions.subSize || 13}px Inter, sans-serif`;
+        ctx.fillStyle = pluginOptions.subColor || 'rgba(229, 238, 252, 0.7)';
+        ctx.fillText(pluginOptions.subtext || '', x, y + 24);
+        ctx.restore();
+      }
+    };
+
+    Chart.register(centerTextPlugin);
+
+    function safeNumber(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function toPercent(value) {
+      const numeric = safeNumber(value);
+      return numeric <= 1 ? numeric * 100 : numeric;
+    }
+
+    function formatTimeLabel(timestamp) {
+      return new Intl.DateTimeFormat('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(timestamp);
+    }
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value);
+    }
+
+    function normalizeMetricsResponse(payload) {
+      const errorBreakdown = payload?.error_breakdown ?? {};
+      return {
+        traffic: safeNumber(payload?.traffic),
+        latencyP50: safeNumber(payload?.latency_p50),
+        latencyP95: safeNumber(payload?.latency_p95),
+        latencyP99: safeNumber(payload?.latency_p99),
+        avgCostUsd: safeNumber(payload?.avg_cost_usd),
+        totalCostUsd: safeNumber(payload?.total_cost_usd),
+        tokensInTotal: safeNumber(payload?.tokens_in_total),
+        tokensOutTotal: safeNumber(payload?.tokens_out_total),
+        errorBreakdown: {
+          RuntimeError: safeNumber(errorBreakdown.RuntimeError ?? errorBreakdown.runtimeerror),
+          Timeout: safeNumber(errorBreakdown.Timeout ?? errorBreakdown.timeout),
+          ValidationError: safeNumber(errorBreakdown.ValidationError ?? errorBreakdown.validationerror)
+        },
+        qualityAvg: safeNumber(payload?.quality_avg)
+      };
+    }
+
+    function seedHistory(snapshot) {
+      const now = Date.now();
+      const factors = [0.88, 0.91, 0.95, 0.98, 1.0, 1.03, 1.01, 0.99];
+
+      dashboardState.labels.length = 0;
+      dashboardState.latencyP50.length = 0;
+      dashboardState.latencyP95.length = 0;
+      dashboardState.latencyP99.length = 0;
+      dashboardState.traffic.length = 0;
+      dashboardState.cost.length = 0;
+      dashboardState.tokensIn.length = 0;
+      dashboardState.tokensOut.length = 0;
+      dashboardState.quality.length = 0;
+
+      for (let index = 0; index < HISTORY_LIMIT; index += 1) {
+        const offsetMinutes = (HISTORY_LIMIT - 1 - index) * 5;
+        const pointTime = new Date(now - offsetMinutes * 60_000);
+        const factor = factors[index] ?? 1;
+
+        dashboardState.labels.push(formatTimeLabel(pointTime));
+        dashboardState.latencyP50.push(Math.max(1, Math.round(snapshot.latencyP50 * (0.92 + index * 0.02))));
+        dashboardState.latencyP95.push(Math.max(1, Math.round(snapshot.latencyP95 * (0.92 + index * 0.02))));
+        dashboardState.latencyP99.push(Math.max(1, Math.round(snapshot.latencyP99 * (0.92 + index * 0.02))));
+        dashboardState.traffic.push(Math.max(0, Math.round(snapshot.traffic * (0.76 + index * 0.05) * factor)));
+        dashboardState.cost.push(Math.max(0, Number((snapshot.totalCostUsd * (0.78 + index * 0.05) * factor).toFixed(4))));
+        dashboardState.tokensIn.push(Math.max(0, Math.round(snapshot.tokensInTotal * (0.76 + index * 0.05) * factor)));
+        dashboardState.tokensOut.push(Math.max(0, Math.round(snapshot.tokensOutTotal * (0.76 + index * 0.05) * factor)));
+        dashboardState.quality.push(Math.max(0, Math.min(100, Math.round(toPercent(snapshot.qualityAvg) * (0.97 + index * 0.004)))));
+      }
+    }
+
+    function pushLivePoint(snapshot) {
+      dashboardState.labels.push(formatTimeLabel(new Date()));
+      dashboardState.latencyP50.push(Math.max(1, Math.round(snapshot.latencyP50)));
+      dashboardState.latencyP95.push(Math.max(1, Math.round(snapshot.latencyP95)));
+      dashboardState.latencyP99.push(Math.max(1, Math.round(snapshot.latencyP99)));
+      dashboardState.traffic.push(Math.max(0, Math.round(snapshot.traffic)));
+      dashboardState.cost.push(Math.max(0, Number(snapshot.totalCostUsd.toFixed(4))));
+      dashboardState.tokensIn.push(Math.max(0, Math.round(snapshot.tokensInTotal)));
+      dashboardState.tokensOut.push(Math.max(0, Math.round(snapshot.tokensOutTotal)));
+      dashboardState.quality.push(Math.max(0, Math.min(100, Math.round(toPercent(snapshot.qualityAvg)))));
+
+      while (dashboardState.labels.length > HISTORY_LIMIT) {
+        dashboardState.labels.shift();
+        dashboardState.latencyP50.shift();
+        dashboardState.latencyP95.shift();
+        dashboardState.latencyP99.shift();
+        dashboardState.traffic.shift();
+        dashboardState.cost.shift();
+        dashboardState.tokensIn.shift();
+        dashboardState.tokensOut.shift();
+        dashboardState.quality.shift();
+      }
+    }
+
+    function renderSummary(snapshot) {
+      const errorTotal = Object.values(snapshot.errorBreakdown).reduce((sum, value) => sum + value, 0);
+      const errorRate = snapshot.traffic > 0 ? (errorTotal / snapshot.traffic) * 100 : 0;
+      const qualityPercent = toPercent(snapshot.qualityAvg);
+
+      document.getElementById('totalTrafficValue').textContent = snapshot.traffic.toLocaleString();
+      document.getElementById('avgLatencyValue').textContent = `${Math.round(snapshot.latencyP50)} ms`;
+      document.getElementById('errorRateValue').textContent = `${errorRate.toFixed(1)}%`;
+      document.getElementById('totalCostValue').textContent = formatCurrency(snapshot.totalCostUsd);
+      document.getElementById('qualityValueInline').textContent = `${Math.round(qualityPercent)}%`;
+
+      const statusText = document.getElementById('statusText');
+      const healthy = errorRate < 8 && qualityPercent >= 85;
+
+      statusText.textContent = healthy ? 'Healthy' : 'Degraded';
+      statusText.style.color = healthy ? '#86efac' : '#fbbf24';
+      document.getElementById('refreshMode').textContent = API_URL;
+    }
+
+    function buildCharts(snapshot) {
+      const commonTooltip = {
+        enabled: true,
+        backgroundColor: 'rgba(8, 14, 24, 0.96)',
+        borderColor: 'rgba(148, 163, 184, 0.16)',
+        borderWidth: 1,
+        titleColor: '#ffffff',
+        bodyColor: '#dbe7fb',
+        padding: 12,
+        displayColors: true
+      };
+
+      const axisStyle = {
+        grid: { color: chartTheme.gridColor, drawBorder: false },
+        ticks: {
+          color: chartTheme.tickColor,
+          padding: 10,
+          font: { size: 11 }
+        }
+      };
+
+      if (latencyChart) latencyChart.destroy();
+      if (trafficChart) trafficChart.destroy();
+      if (errorChart) errorChart.destroy();
+      if (costChart) costChart.destroy();
+      if (tokenChart) tokenChart.destroy();
+      if (qualityChart) qualityChart.destroy();
+
+      latencyChart = new Chart(document.getElementById('latencyChart'), {
+        type: 'line',
+        data: {
+          labels: dashboardState.labels,
+          datasets: [
+            {
+              label: 'P50',
+              data: dashboardState.latencyP50,
+              borderColor: '#4fd1c5',
+              backgroundColor: 'rgba(79, 209, 197, 0.18)',
+              tension: 0.35,
+              fill: true,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: '#4fd1c5'
+            },
+            {
+              label: 'P95',
+              data: dashboardState.latencyP95,
+              borderColor: '#60a5fa',
+              backgroundColor: 'rgba(96, 165, 250, 0.12)',
+              tension: 0.35,
+              fill: false,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: '#60a5fa'
+            },
+            {
+              label: 'P99',
+              data: dashboardState.latencyP99,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.12)',
+              tension: 0.35,
+              fill: false,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: '#f59e0b'
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: '#dce7f8', usePointStyle: true, pointStyle: 'line' }
+            },
+            tooltip: commonTooltip
+          },
+          scales: {
+            x: axisStyle,
+            y: {
+              ...axisStyle,
+              beginAtZero: false,
+              title: { display: true, text: 'Milliseconds', color: '#9fb0cf' }
+            }
+          }
+        }
+      });
+
+      trafficChart = new Chart(document.getElementById('trafficChart'), {
+        type: 'bar',
+        data: {
+          labels: dashboardState.labels,
+          datasets: [{
+            label: 'Traffic',
+            data: dashboardState.traffic,
+            borderRadius: 10,
+            borderSkipped: false,
+            backgroundColor: (context) => {
+              const chart = context.chart;
+              const { ctx, chartArea } = chart;
+              if (!chartArea) return '#60a5fa';
+              const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              gradient.addColorStop(0, 'rgba(96, 165, 250, 0.95)');
+              gradient.addColorStop(1, 'rgba(79, 209, 197, 0.45)');
+              return gradient;
+            }
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: commonTooltip },
+          scales: {
+            x: axisStyle,
+            y: {
+              ...axisStyle,
+              beginAtZero: true,
+              title: { display: true, text: 'Requests', color: '#9fb0cf' }
+            }
+          }
+        }
+      });
+
+      errorChart = new Chart(document.getElementById('errorChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['RuntimeError', 'Timeout', 'ValidationError'],
+          datasets: [{
+            data: [snapshot.errorBreakdown.RuntimeError, snapshot.errorBreakdown.Timeout, snapshot.errorBreakdown.ValidationError],
+            backgroundColor: ['#fb7185', '#f59e0b', '#60a5fa'],
+            borderColor: 'rgba(8, 14, 24, 0.95)',
+            borderWidth: 3,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#dce7f8', padding: 18, usePointStyle: true }
+            },
+            tooltip: commonTooltip
+          }
+        }
+      });
+
+      costChart = new Chart(document.getElementById('costChart'), {
+        type: 'line',
+        data: {
+          labels: dashboardState.labels,
+          datasets: [{
+            label: 'Cost',
+            data: dashboardState.cost,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.18)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: '#f59e0b'
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#dce7f8' } },
+            tooltip: {
+              ...commonTooltip,
+              callbacks: {
+                label(context) {
+                  return ` ${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: axisStyle,
+            y: {
+              ...axisStyle,
+              title: { display: true, text: 'USD', color: '#9fb0cf' },
+              ticks: {
+                color: chartTheme.tickColor,
+                callback(value) {
+                  return `$${value}`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      tokenChart = new Chart(document.getElementById('tokenChart'), {
+        type: 'bar',
+        data: {
+          labels: dashboardState.labels,
+          datasets: [
+            {
+              label: 'tokens_in',
+              data: dashboardState.tokensIn,
+              backgroundColor: 'rgba(96, 165, 250, 0.88)',
+              borderRadius: 10,
+              borderSkipped: false
+            },
+            {
+              label: 'tokens_out',
+              data: dashboardState.tokensOut,
+              backgroundColor: 'rgba(167, 139, 250, 0.88)',
+              borderRadius: 10,
+              borderSkipped: false
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#dce7f8', usePointStyle: true }
+            },
+            tooltip: commonTooltip
+          },
+          scales: {
+            x: axisStyle,
+            y: {
+              ...axisStyle,
+              title: { display: true, text: 'Tokens', color: '#9fb0cf' }
+            }
+          }
+        }
+      });
+
+      const qualityPercent = dashboardState.quality.length ? dashboardState.quality[dashboardState.quality.length - 1] : 0;
+      const remainder = Math.max(0, 100 - qualityPercent);
+      qualityChart = new Chart(document.getElementById('qualityChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Quality', 'Remaining'],
+          datasets: [{
+            data: [qualityPercent, remainder],
+            backgroundColor: ['#34d399', 'rgba(148, 163, 184, 0.12)'],
+            borderWidth: 0,
+            hoverOffset: 0
+          }]
+        },
+        options: {
+          maintainAspectRatio: false,
+          cutout: '76%',
+          rotation: -90,
+          circumference: 180,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false },
+            centerTextPlugin: {
+              text: `${qualityPercent}%`,
+              subtext: 'avg quality',
+              color: '#ffffff',
+              subColor: 'rgba(229, 238, 252, 0.75)',
+              size: 42,
+              subSize: 13
+            }
+          }
+        }
+      });
+    }
+
+    function renderIncidentsTable(snapshot) {
+      const tbody = document.getElementById('incidentsTableBody');
+      const errorEntries = Object.entries(snapshot.errorBreakdown)
+        .filter(([, count]) => count > 0)
+        .sort((left, right) => right[1] - left[1]);
+
+      const rows = errorEntries.length
+        ? errorEntries.map(([scenario, count]) => ({
+            time: dashboardState.labels[dashboardState.labels.length - 1] || formatTimeLabel(new Date()),
+            scenario,
+            status: `${count} events`,
+            statusClass: count > 5 ? 'err' : 'warn',
+            rootCause: 'Observed in the live /metrics snapshot for the current window.'
+          }))
+        : [{
+            time: dashboardState.labels[dashboardState.labels.length - 1] || formatTimeLabel(new Date()),
+            scenario: 'No incidents recorded',
+            status: 'OK',
+            statusClass: 'ok',
+            rootCause: 'The live snapshot reported zero active errors.'
+          }];
+
+      tbody.innerHTML = rows.map((incident) => `
+        <tr>
+          <td>${incident.time}</td>
+          <td>${incident.scenario}</td>
+          <td><span class="status ${incident.statusClass}">${incident.status}</span></td>
+          <td>${incident.rootCause}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadDashboardData() {
+      const response = await fetch(API_URL, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Failed to load metrics: ${response.status}`);
+      }
+      return normalizeMetricsResponse(await response.json());
+    }
+
+    async function refreshDashboard() {
+      try {
+        const snapshot = await loadDashboardData();
+        if (!dashboardState.labels.length) {
+          seedHistory(snapshot);
+        }
+        pushLivePoint(snapshot);
+        renderSummary(snapshot);
+        renderIncidentsTable(snapshot);
+        buildCharts(snapshot);
+      } catch (error) {
+        console.error('Dashboard refresh failed:', error);
+        document.getElementById('statusText').textContent = 'Disconnected';
+        document.getElementById('statusText').style.color = '#fb7185';
+        document.getElementById('refreshMode').textContent = API_URL;
+      }
+    }
+
+    function setRefreshMode(nextMode) {
+      refreshMode = nextMode;
+      const autoModeBtn = document.getElementById('autoModeBtn');
+      const manualModeBtn = document.getElementById('manualModeBtn');
+      const refreshModeLabel = document.getElementById('refreshMode');
+
+      autoModeBtn.classList.toggle('active', nextMode === 'auto');
+      manualModeBtn.classList.toggle('active', nextMode === 'manual');
+
+      if (refreshTimerId) {
+        clearInterval(refreshTimerId);
+        refreshTimerId = null;
+      }
+
+      if (nextMode === 'auto') {
+        refreshModeLabel.textContent = 'Auto Get every 15s';
+        refreshTimerId = setInterval(() => {
+          refreshDashboard();
+        }, 15000);
+      } else {
+        refreshModeLabel.textContent = 'Manual Get';
+      }
+    }
+
+    window.refreshDashboard = refreshDashboard;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('autoModeBtn').addEventListener('click', () => setRefreshMode('auto'));
+      document.getElementById('manualModeBtn').addEventListener('click', () => setRefreshMode('manual'));
+      document.getElementById('getNowBtn').addEventListener('click', () => refreshDashboard());
+      document.getElementById('refreshMode').textContent = 'Auto Get every 15s';
+      setRefreshMode('auto');
+      refreshDashboard();
+    });
+  </script>
+</body>
+</html>
