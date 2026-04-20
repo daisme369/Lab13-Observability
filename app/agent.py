@@ -18,6 +18,8 @@ class AgentResult:
     tokens_out: int
     cost_usd: float
     quality_score: float
+    tokens_in_anomaly: bool
+    tokens_out_anomaly: bool
 
 
 class LabAgent:
@@ -54,6 +56,7 @@ class LabAgent:
             tokens_out=response.usage.output_tokens,
             quality_score=quality_score,
         )
+        token_anomalies = metrics.current_token_anomalies()
 
         return AgentResult(
             answer=response.text,
@@ -62,6 +65,8 @@ class LabAgent:
             tokens_out=response.usage.output_tokens,
             cost_usd=cost_usd,
             quality_score=quality_score,
+            tokens_in_anomaly=token_anomalies["tokens_in_anomaly"],
+            tokens_out_anomaly=token_anomalies["tokens_out_anomaly"],
         )
 
     def _estimate_cost(self, tokens_in: int, tokens_out: int) -> float:

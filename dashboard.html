@@ -573,9 +573,9 @@
         <div class="panel-header">
           <div>
             <h2>Token Usage</h2>
-            <div class="panel-subtitle">Input and output token usage per interval.</div>
+            <div class="panel-subtitle">Input/output token usage with anomaly detection from /metrics.</div>
           </div>
-          <div class="badge">tokens</div>
+          <div class="badge" id="tokenAnomalyBadge">tokens</div>
         </div>
         <div class="chart-wrap"><canvas id="tokenChart"></canvas></div>
       </article>
@@ -711,6 +711,14 @@
         totalCostUsd: safeNumber(payload?.total_cost_usd),
         tokensInTotal: safeNumber(payload?.tokens_in_total),
         tokensOutTotal: safeNumber(payload?.tokens_out_total),
+        tokensInAvg: safeNumber(payload?.tokens_in_avg),
+        tokensOutAvg: safeNumber(payload?.tokens_out_avg),
+        tokensInAnomalyCount: safeNumber(payload?.tokens_in_anomaly_count),
+        tokensOutAnomalyCount: safeNumber(payload?.tokens_out_anomaly_count),
+        tokensInAnomalyRate: safeNumber(payload?.tokens_in_anomaly_rate),
+        tokensOutAnomalyRate: safeNumber(payload?.tokens_out_anomaly_rate),
+        lastTokensInAnomaly: Boolean(payload?.last_tokens_in_anomaly),
+        lastTokensOutAnomaly: Boolean(payload?.last_tokens_out_anomaly),
         errorBreakdown: {
           RuntimeError: safeNumber(errorBreakdown.RuntimeError ?? errorBreakdown.runtimeerror),
           Timeout: safeNumber(errorBreakdown.Timeout ?? errorBreakdown.timeout),
@@ -779,15 +787,17 @@
       const errorTotal = Object.values(snapshot.errorBreakdown).reduce((sum, value) => sum + value, 0);
       const errorRate = snapshot.traffic > 0 ? (errorTotal / snapshot.traffic) * 100 : 0;
       const qualityPercent = toPercent(snapshot.qualityAvg);
+      const maxTokenAnomalyRate = Math.max(snapshot.tokensInAnomalyRate, snapshot.tokensOutAnomalyRate);
 
       document.getElementById('totalTrafficValue').textContent = snapshot.traffic.toLocaleString();
       document.getElementById('avgLatencyValue').textContent = `${Math.round(snapshot.latencyP50)} ms`;
       document.getElementById('errorRateValue').textContent = `${errorRate.toFixed(1)}%`;
       document.getElementById('totalCostValue').textContent = formatCurrency(snapshot.totalCostUsd);
       document.getElementById('qualityValueInline').textContent = `${Math.round(qualityPercent)}%`;
+      document.getElementById('tokenAnomalyBadge').textContent = `in/out anomalies: ${snapshot.tokensInAnomalyCount}/${snapshot.tokensOutAnomalyCount}`;
 
       const statusText = document.getElementById('statusText');
-      const healthy = errorRate < 8 && qualityPercent >= 85;
+      const healthy = errorRate < 8 && qualityPercent >= 85 && maxTokenAnomalyRate < 20;
 
       statusText.textContent = healthy ? 'Healthy' : 'Degraded';
       statusText.style.color = healthy ? '#86efac' : '#fbbf24';
@@ -1062,27 +1072,53 @@
 
     function renderIncidentsTable(snapshot) {
       const tbody = document.getElementById('incidentsTableBody');
+      const nowLabel = dashboardState.labels[dashboardState.labels.length - 1] || formatTimeLabel(new Date());
       const errorEntries = Object.entries(snapshot.errorBreakdown)
         .filter(([, count]) => count > 0)
         .sort((left, right) => right[1] - left[1]);
 
+      const tokenAnomalyRows = [];
+      if (snapshot.tokensInAnomalyCount > 0 || snapshot.lastTokensInAnomaly) {
+        tokenAnomalyRows.push({
+          time: nowLabel,
+          scenario: 'tokens_in anomaly',
+          status: `${snapshot.tokensInAnomalyCount} events`,
+          statusClass: snapshot.lastTokensInAnomaly ? 'err' : 'warn',
+          rootCause: `Input token volume deviates from baseline (avg ${Math.round(snapshot.tokensInAvg)}).`
+        });
+      }
+      if (snapshot.tokensOutAnomalyCount > 0 || snapshot.lastTokensOutAnomaly) {
+        tokenAnomalyRows.push({
+          time: nowLabel,
+          scenario: 'tokens_out anomaly',
+          status: `${snapshot.tokensOutAnomalyCount} events`,
+          statusClass: snapshot.lastTokensOutAnomaly ? 'err' : 'warn',
+          rootCause: `Output token volume deviates from baseline (avg ${Math.round(snapshot.tokensOutAvg)}).`
+        });
+      }
+
       const rows = errorEntries.length
         ? errorEntries.map(([scenario, count]) => ({
-            time: dashboardState.labels[dashboardState.labels.length - 1] || formatTimeLabel(new Date()),
+            time: nowLabel,
             scenario,
             status: `${count} events`,
             statusClass: count > 5 ? 'err' : 'warn',
             rootCause: 'Observed in the live /metrics snapshot for the current window.'
           }))
+        : [];
+
+      const mergedRows = [...tokenAnomalyRows, ...rows];
+      const displayRows = mergedRows.length
+        ? mergedRows
         : [{
-            time: dashboardState.labels[dashboardState.labels.length - 1] || formatTimeLabel(new Date()),
+            time: nowLabel,
             scenario: 'No incidents recorded',
             status: 'OK',
             statusClass: 'ok',
-            rootCause: 'The live snapshot reported zero active errors.'
+            rootCause: 'The live snapshot reported no error or token anomalies.'
           }];
 
-      tbody.innerHTML = rows.map((incident) => `
+      tbody.innerHTML = displayRows.map((incident) => `
         <tr>
           <td>${incident.time}</td>
           <td>${incident.scenario}</td>

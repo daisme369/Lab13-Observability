@@ -21,6 +21,8 @@ class ChatResponse(BaseModel):
     tokens_out: int
     cost_usd: float
     quality_score: float
+    tokens_in_anomaly: bool = False
+    tokens_out_anomaly: bool = False
 
 
 class LogRecord(BaseModel):

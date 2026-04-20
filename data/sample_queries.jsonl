@@ -1,10 +1,29 @@
-{"user_id":"u01","session_id":"s01","feature":"qa","message":"What is your refund policy? My email is student@vinuni.edu.vn"}
-{"user_id":"u02","session_id":"s02","feature":"qa","message":"Explain why metrics traces and logs work together"}
-{"user_id":"u03","session_id":"s03","feature":"summary","message":"Summarize the monitoring policy for production logging"}
-{"user_id":"u04","session_id":"s04","feature":"qa","message":"Can I get help with policy and monitoring?"}
-{"user_id":"u05","session_id":"s05","feature":"qa","message":"Here is my phone 0987654321, what should be logged?"}
-{"user_id":"u06","session_id":"s06","feature":"summary","message":"Give me a short summary of the observability workflow"}
-{"user_id":"u07","session_id":"s07","feature":"qa","message":"What should not appear in app logs?"}
-{"user_id":"u08","session_id":"s08","feature":"qa","message":"How do I debug tail latency?"}
-{"user_id":"u09","session_id":"s09","feature":"qa","message":"What is the policy for PII and credit card 4111 1111 1111 1111?"}
-{"user_id":"u10","session_id":"s10","feature":"qa","message":"How should alerts be designed?"}
+{"_case":"NORM_01_REFUND","user_id":"u01","session_id":"s01","feature":"qa","message":"What is your refund policy? My email is student@vinuni.edu.vn"}
+{"_case":"NORM_02_MONITORING","user_id":"u02","session_id":"s02","feature":"qa","message":"Explain why metrics traces and logs work together"}
+{"_case":"NORM_03_SUMMARY","user_id":"u03","session_id":"s03","feature":"summary","message":"Summarize the monitoring policy for production logging"}
+{"_case":"NORM_04_POLICY","user_id":"u04","session_id":"s04","feature":"qa","message":"Can I get help with policy and monitoring?"}
+{"_case":"NORM_05_PHONE_PII","user_id":"u05","session_id":"s05","feature":"qa","message":"Here is my phone 0987654321, what should be logged?"}
+{"_case":"NORM_06_WORKFLOW","user_id":"u06","session_id":"s06","feature":"summary","message":"Give me a short summary of the observability workflow"}
+{"_case":"NORM_07_LOGGING","user_id":"u07","session_id":"s07","feature":"qa","message":"What should not appear in app logs?"}
+{"_case":"NORM_08_LATENCY","user_id":"u08","session_id":"s08","feature":"qa","message":"How do I debug tail latency?"}
+{"_case":"NORM_09_CARD_PII","user_id":"u09","session_id":"s09","feature":"qa","message":"What is the policy for PII and credit card 4111 1111 1111 1111?"}
+{"_case":"NORM_10_ALERTS","user_id":"u10","session_id":"s10","feature":"qa","message":"How should alerts be designed?"}
+{"_case":"ANOM_IN_HIGH_01","user_id":"u11","session_id":"s11","feature":"qa","message":"Please provide a detailed explanation about monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy and monitoring policy and logging policy and tracing policy."}
+{"_case":"ANOM_IN_LOW_01","user_id":"u12","session_id":"s12","feature":"qa","message":"ok"}
+{"_case":"VAL_01_EMPTY_MESSAGE","user_id":"u13","session_id":"s13","feature":"qa","message":""}
+{"_case":"VAL_02_MISSING_SESSION","user_id":"u14","feature":"qa","message":"Missing session id should fail validation"}
+{"_case":"VAL_03_NULL_USER","user_id":null,"session_id":"s15","feature":"qa","message":"Null user should fail validation"}
+{"_control":"incident","scenario":"tool_fail","enabled":true}
+{"_case":"ERR_01_TOOL_FAIL","user_id":"u16","session_id":"s16","feature":"qa","message":"This should trigger RuntimeError from vector store"}
+{"_case":"ERR_02_TOOL_FAIL","user_id":"u17","session_id":"s17","feature":"summary","message":"Another request while tool_fail is enabled"}
+{"_control":"incident","scenario":"tool_fail","enabled":false}
+{"_control":"incident","scenario":"rag_slow","enabled":true}
+{"_case":"LAT_01_RAG_SLOW","user_id":"u18","session_id":"s18","feature":"qa","message":"Check monitoring behavior when retrieval gets slower"}
+{"_case":"LAT_02_RAG_SLOW","user_id":"u19","session_id":"s19","feature":"summary","message":"Summarize latency troubleshooting under heavy retrieval"}
+{"_control":"incident","scenario":"rag_slow","enabled":false}
+{"_control":"incident","scenario":"cost_spike","enabled":true}
+{"_case":"ANOM_OUT_01_COST_SPIKE","user_id":"u20","session_id":"s20","feature":"qa","message":"How do I reduce generation cost while preserving response quality?"}
+{"_case":"ANOM_OUT_02_COST_SPIKE","user_id":"u21","session_id":"s21","feature":"qa","message":"Give a concise checklist to control output token usage"}
+{"_case":"ANOM_OUT_03_COST_SPIKE","user_id":"u22","session_id":"s22","feature":"summary","message":"Summarize mitigation steps for unexpected daily cost growth"}
+{"_control":"incident","scenario":"cost_spike","enabled":false}
+{"_case":"RECOVERY_01_NORMAL","user_id":"u23","session_id":"s23","feature":"qa","message":"Confirm system behavior after incidents are disabled"}
