@@ -4,13 +4,36 @@ slis:
   latency_p95_ms:
     objective: 3000
     target: 99.5
-    note: Replace with your group's target
+    note: P95 response latency under normal load
+  latency_p99_ms:
+    objective: 5000
+    target: 99.0
+    note: Tail latency guardrail for worst-case requests
+  ttft_p95_ms:
+    objective: 1200
+    target: 99.0
+    note: Time-to-first-token proxy for responsiveness
   error_rate_pct:
     objective: 2
     target: 99.0
+    note: 5xx and unhandled exception rate
+  timeout_rate_pct:
+    objective: 0.5
+    target: 99.5
+    note: Timeout-specific failure rate
   daily_cost_usd:
     objective: 2.5
     target: 100.0
-  quality_score_avg:
-    objective: 0.75
-    target: 95.0
+    note: Daily spend budget cap
+  pii_leak_rate:
+    objective: 0.0
+    target: 100.0
+    note: Logs must not contain raw PII
+  correlation_coverage_pct:
+    objective: 99.9
+    target: 99.9
+    note: API logs with valid correlation_id
+  structured_log_compliance_pct:
+    objective: 99.5
+    target: 99.0
+    note: Logs matching required JSON schema
